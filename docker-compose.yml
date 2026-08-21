@@ -1,6 +1,7 @@
 services:
   nodeseek-monitor:
     build: .
+    image: nodeseek-monitor
     container_name: nodeseek-monitor
     restart: unless-stopped
     env_file:
