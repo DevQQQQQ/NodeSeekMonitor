@@ -80,9 +80,19 @@ sudo systemctl enable --now docker
 ### 2. 部署本项目
 
 ```bash
-git clone <your-repo> nodeseek-monitor && cd nodeseek-monitor
+git clone https://github.com/DevQQQQQ/nodeseek-monitor.git && cd nodeseek-monitor
 cp .env.example .env
 nano .env          # 填写 TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID，按需修改 KEYWORDS
+
+格式如下
+RSS_URL=https://rss.nodeseek.com/
+POLL_INTERVAL_SECONDS=30
+KEYWORDS=关键词1,关键词2
+TELEGRAM_BOT_TOKEN=填写你的TELEGRAM_BOT_TOKEN
+TELEGRAM_CHAT_ID=填写你的TELEGRAM_CHAT_ID
+DATABASE_PATH=/app/data/nodeseek.db
+LOG_LEVEL=INFO
+
 docker compose up -d
 docker compose logs -f
 ```
