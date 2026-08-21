@@ -1,0 +1,19 @@
+# 敏感配置：绝不提交真实 .env
+.env
+.env.*
+
+# 运行时数据（SQLite）与日志，容器挂载持久化，不进仓库
+data/
+logs/
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 本地数据库文件
+*.db
+*.sqlite
+*.sqlite3

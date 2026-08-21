@@ -1,0 +1,11 @@
+services:
+  nodeseek-monitor:
+    build: .
+    container_name: nodeseek-monitor
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data      # SQLite 持久化，容器重启不丢数据
+      - ./logs:/app/logs      # 文件日志（若启用）
+    # 不需要暴露端口：这是一个后台 Worker，无 Web 服务
