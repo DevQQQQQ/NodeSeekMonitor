@@ -27,6 +27,9 @@ NodeSeek RSS (全站最新帖)
 cp .env.example .env
 ```
 
+`.env.example` 是入库的配置模板（`.gitignore` 里的 `.env.*` 规则对它做了例外），
+真实的 `.env` 与 `.env.local` 等一律不会进仓库。
+
 | 变量 | 默认值 | 说明 |
 |---|---|---|
 | `RSS_URL` | `https://rss.nodeseek.com/` | NodeSeek RSS 地址 |
@@ -58,7 +61,14 @@ python -m app.main
 python scripts/smoke_test.py
 ```
 
-覆盖：RSS 解析、关键词匹配、首次静默、幂等去重、Telegram 失败重试、消息格式。
+覆盖：RSS 解析、无时区 pubDate 按 UTC 解释、关键词匹配、首次静默、基线门控、
+幂等去重、Telegram 失败重试、关键词变更后同步、日志不重复、Token 不泄露、消息格式。
+
+容器内同样可以跑（镜像已包含 `scripts/`，需先按第一节创建 `.env`，因为 compose 会读取它）：
+
+```bash
+docker compose run --rm nodeseek-monitor python scripts/smoke_test.py
+```
 
 ---
 
@@ -114,7 +124,9 @@ docker compose logs -f   # 实时日志
 docker compose down      # 停止
 ```
 
-`./data` 与 `./logs` 已挂载到宿主机，容器重建 / 重启后 SQLite 数据不丢。
+`./data` 已挂载到宿主机，容器重建 / 重启后 SQLite 数据不丢。
+容器日志走 Docker 的 json-file 驱动，已限制为单文件 10MB × 3 个，不会无限增长；
+查看日志请用 `docker compose logs`。
 
 ---
 
@@ -144,15 +156,31 @@ docker compose down      # 停止
 程序第一次启动时会把当前 RSS 里的所有帖子写入 SQLite 作为「已见基线」，
 **不会**向 Telegram 推送任何历史帖子。之后出现的新帖（且匹配关键词）才会推送。
 
+基线是否建立成功会被持久记录在数据库的 `meta` 表里：
+
+- **基线建立成功** → 之后重启不会再重新建立基线，直接进入轮询。
+- **启动时 RSS 抓取失败** → 基线**不会**被标记为已建立，程序停留在「通知关闭」状态
+  并每隔一个轮询间隔重试。这是刻意设计：若把抓取失败当成「空基线」，下一轮抓取成功后
+  feed 里的帖子会被全部误判为新帖，向用户推送一整批历史帖。基线未就绪期间**不会有任何推送**。
+- 从旧版本升级上来的数据库（`seen_posts` 里已有数据但没有 `meta` 表）会被自动识别并
+  视为「基线已建立」，避免升级后重复推送。
+
+> 本地调试注意：`.env` 里 `DATABASE_PATH` 默认是容器内路径 `/app/data/nodeseek.db`。
+> 在 Windows / macOS 上直接 `python -m app.main` 时，程序会在当前盘符根目录下创建
+> `app/data/`。本地调试建议在 `.env` 中改为相对路径，例如 `DATABASE_PATH=./data/nodeseek.db`。
+
 ---
 
 ## 六、可靠性与边界
 
 - **去重 / 幂等**：以 RSS `<guid>`（稳定数字 ID）为主键；同一帖子只成功推送一次。
+- **基线门控**：基线未建立前不进入通知路径（见第五节），启动时的网络抖动不会造成历史帖轰炸。
 - **失败重试**：Telegram 发送失败不会标记「已通知」，下一轮轮询会再次尝试，不会永久丢失。
 - **异常不退出**：HTTP 403/429/500、超时、DNS 失败、XML 异常、Telegram 错误都会被记录，
   等待下一轮继续运行；连续失败升级为 `ERROR` 日志。
+- **日志精简**：已推送过的帖子不会在每轮轮询时重复打日志，只有真正发生推送时才记录命中。
 - **密钥安全**：Token 只存在于 `.env`（已被 `.gitignore` 排除），不进代码 / Dockerfile / 日志。
+  异常信息中的 Token 会被主动替换为 `***`，不依赖「恰好没打印到」。
 
 ---
 

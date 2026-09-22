@@ -7,9 +7,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+# 镜像内也能跑离线自测：docker compose run --rm nodeseek-monitor python scripts/smoke_test.py
+COPY scripts ./scripts
 
 # 运行时持久化目录（也会被 docker-compose 挂载覆盖）
-RUN mkdir -p /app/data /app/logs
+RUN mkdir -p /app/data
 
 # 密钥一律来自 env_file(.env)，不写进镜像
 CMD ["python", "-m", "app.main"]

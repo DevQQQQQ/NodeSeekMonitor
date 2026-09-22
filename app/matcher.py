@@ -1,10 +1,7 @@
-import logging
 import re
 from html import unescape
 
 from app.models import Post
-
-logger = logging.getLogger(__name__)
 
 _TAG_RE = re.compile(r"<[^>]+>")
 

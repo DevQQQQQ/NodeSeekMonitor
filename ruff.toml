@@ -1,0 +1,22 @@
+# Ruff 配置：把项目既有约定固化下来，让 `ruff check` 成为可复现的质量门禁。
+# 用法：ruff check app/ scripts/    （需要先 pip install ruff）
+
+target-version = "py312"
+line-length = 88
+
+[lint]
+select = [
+    "E4",  # import 相关（含 E402：smoke_test 需要在 sys.path 调整后导入）
+    "E5",  # 行宽（与 line-length 一致）
+    "E7",  # 可疑写法
+    "E9",  # 语法/运行期错误
+    "F",   # pyflakes：未使用导入、未定义名字等
+    "I",   # import 排序
+    "B",   # bugbear：常见陷阱
+    "SIM", # 可简化写法
+]
+ignore = [
+    # 项目统一使用 Optional[X] / typing.Optional，不强制改写为 X | None。
+    # 保持与既有代码风格一致，避免无意义的全库 diff。
+    "UP045",
+]

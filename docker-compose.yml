@@ -8,5 +8,9 @@ services:
       - .env
     volumes:
       - ./data:/app/data      # SQLite 持久化，容器重启不丢数据
-      - ./logs:/app/logs      # 文件日志（若启用）
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"       # 常驻服务，限制单文件大小避免日志无限增长
+        max-file: "3"
     # 不需要暴露端口：这是一个后台 Worker，无 Web 服务

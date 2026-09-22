@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -6,18 +5,22 @@ import httpx
 
 from app.models import Post
 
-logger = logging.getLogger(__name__)
-
 API_BASE = "https://api.telegram.org/bot"
+# China has no DST, so UTC+8 is a constant offset (avoids a tzdata dependency).
+BEIJING_TZ = timezone(timedelta(hours=8))
 
 
 def _to_beijing(dt: Optional[datetime]) -> Optional[datetime]:
-    """China has no DST, so UTC+8 is a constant offset (avoids tzdata dep)."""
+    """Convert to Beijing time (UTC+8), keeping the tzinfo honest.
+
+    Returning a datetime whose tzinfo still says UTC would be a trap for any
+    later arithmetic, even though strftime() would look right.
+    """
     if dt is None:
         return None
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc) + timedelta(hours=8)
+    return dt.astimezone(BEIJING_TZ)
 
 
 def format_message(post: Post, matched: list[str]) -> str:
@@ -44,6 +47,18 @@ class TelegramError(Exception):
     """Raised when a Telegram send fails (network, timeout, or API error)."""
 
 
+def _redact(text: str, secret: str) -> str:
+    """Strip the bot token from a message.
+
+    The token travels inside the request URL, so some transport-level error
+    strings embed it. Redacting here makes "the token never reaches the logs" an
+    enforced property rather than a lucky one.
+    """
+    if secret and secret in text:
+        return text.replace(secret, "***")
+    return text
+
+
 async def send_message(
     token: str, chat_id: str, text: str, timeout: float = 10.0
 ) -> None:
@@ -62,15 +77,19 @@ async def send_message(
                 json={"chat_id": chat_id, "text": text},
             )
     except httpx.TimeoutException as e:
-        raise TelegramError(f"timeout: {e}") from e
+        # `from None` keeps the original exception (which may carry the
+        # token-bearing URL) out of any traceback rendering.
+        raise TelegramError(f"timeout: {_redact(str(e), token)}") from None
     except httpx.HTTPError as e:
-        raise TelegramError(f"request error: {e}") from e
+        raise TelegramError(f"request error: {_redact(str(e), token)}") from None
 
     if resp.status_code != 200:
-        raise TelegramError(f"HTTP {resp.status_code}: {resp.text[:200]}")
+        raise TelegramError(
+            f"HTTP {resp.status_code}: {_redact(resp.text[:200], token)}"
+        )
     try:
         data = resp.json()
     except Exception:
-        raise TelegramError("invalid JSON response from Telegram")
+        raise TelegramError("invalid JSON response from Telegram") from None
     if not data.get("ok"):
-        raise TelegramError(f"api error: {data}")
+        raise TelegramError(f"api error: {_redact(str(data), token)}")

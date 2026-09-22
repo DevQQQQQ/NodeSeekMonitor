@@ -41,9 +41,16 @@ def _parse_published(entry) -> Optional[datetime]:
     raw = getattr(entry, "published", None)
     if raw:
         try:
-            return parsedate_to_datetime(raw).astimezone(timezone.utc)
+            dt = parsedate_to_datetime(raw)
         except (TypeError, ValueError):
             return None
+        # parsedate_to_datetime() returns a naive datetime when the string has no
+        # timezone. Treat that as UTC: calling astimezone() on a naive value would
+        # silently interpret it in the host's local timezone, shifting the result
+        # by the host's UTC offset on any non-UTC machine.
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
     return None
 
 
@@ -85,9 +92,11 @@ def parse_feed(content: str) -> list[Post]:
         raise ValueError(f"malformed RSS: {parsed.get('bozo_exception')}")
 
     posts: list[Post] = []
+    skipped = 0
     for entry in parsed.entries:
         title = (getattr(entry, "title", "") or "").strip()
         if not title:
+            skipped += 1
             continue
         posts.append(
             Post(
@@ -99,5 +108,15 @@ def parse_feed(content: str) -> list[Post]:
                 category=_get_category(entry),
                 published_at=_parse_published(entry),
             )
+        )
+
+    if skipped:
+        # Entries exist but carry no usable title: usually a feed-structure
+        # change rather than an empty feed, so make it visible instead of
+        # silently returning fewer posts than the feed contains.
+        logger.warning(
+            "Skipped %d/%d entries without a title (possible feed structure change)",
+            skipped,
+            len(parsed.entries),
         )
     return posts

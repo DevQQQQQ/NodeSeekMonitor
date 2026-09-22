@@ -1,0 +1,28 @@
+# 缩小构建上下文，避免把密钥与本地状态传给 docker daemon
+.git
+.gitignore
+.workbuddy-ai
+
+# 运行时状态与日志（由 docker-compose 挂载，不进镜像）
+data
+logs
+
+# 密钥绝不进构建上下文
+.env
+.env.*
+
+# 本地开发产物
+__pycache__
+*.py[cod]
+*.egg-info
+.venv
+venv
+*.db
+*.sqlite
+*.sqlite3
+
+# 文档与编排文件，镜像内不需要
+docs
+README.md
+Dockerfile
+docker-compose.yml

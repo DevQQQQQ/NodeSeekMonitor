@@ -2,6 +2,9 @@
 .env
 .env.*
 
+# 但配置模板必须入库，否则新用户无法按 README 完成部署
+!.env.example
+
 # 运行时数据（SQLite）与日志，容器挂载持久化，不进仓库
 data/
 logs/
@@ -17,3 +20,6 @@ venv/
 *.db
 *.sqlite
 *.sqlite3
+
+.workbuddy-ai
+docs
