@@ -1,7 +1,7 @@
 import httpx
 
 # A descriptive User-Agent is REQUIRED: NodeSeek RSS returns 403 without one.
-USER_AGENT = "NodeSeekMonitor/1.0 (+https://www.nodeseek.com)"
+USER_AGENT = "nodeSeekMonitor/1.0 (+https://www.nodeseek.com)"
 
 
 class RSSFetchError(Exception):

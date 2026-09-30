@@ -90,7 +90,7 @@ sudo systemctl enable --now docker
 ### 2. 部署本项目
 
 ```bash
-git clone https://github.com/DevQQQQQ/NodeSeekMonitor.git && cd NodeSeekMonitor
+git clone https://github.com/DevQQQQQ/nodeSeekMonitor.git && cd nodeSeekMonitor
 cp .env.example .env
 nano .env          # 填写 TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID，按需修改 KEYWORDS
 
